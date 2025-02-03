@@ -11,7 +11,7 @@ game must be in windowed mode for the map overlay to work
 probably only works for X11 KDE?
 
 
-
+'''
 
 bash build_windows.sh
 
@@ -21,7 +21,7 @@ bash memgoblin.sh
 
 enjoy
 
-
+'''
 
 
 
