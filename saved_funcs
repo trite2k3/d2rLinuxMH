@@ -1,0 +1,116 @@
+// Rendering the map with black walls and white interiors
+void renderScene(Display* display, Window window) {
+    // Clear the screen with a transparent background
+    glClearColor(0, 0, 0, 0);  // Ensure clear color is fully transparent
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glPushMatrix();  // Save the current matrix
+
+    // Apply the vertical flip
+    glScalef(1.0f, -1.0f, 1.0f);
+
+    // Rotate around the center of the map
+    glRotatef(45.0f, 0.0f, 0.0f, 1.0f);
+    int movemapx = map_width / 2;
+    int movemapy = map_height / 2;
+    glTranslatef(-movemapx, -movemapy, 0.0f);
+
+    // Now draw the map
+    for (int y = 0; y < map_height; ++y) {
+        const std::vector<int>& row = map_data_rows[y];
+        int x = 0;
+        bool fill = true;
+
+        for (int offset : row) {
+            if (!fill) {
+                // Opaque white for the map itself
+                glColor4f(1.0f, 1.0f, 1.0f, 0.1f);
+
+                // Draw the quad for unfilled areas (the map itself)
+                glBegin(GL_QUADS);
+                glVertex2i(x, y);
+                glVertex2i(x + offset, y);
+                glVertex2i(x + offset, y + 1);
+                glVertex2i(x, y + 1);
+                glEnd();
+            }
+            // Move to the next x position
+            x += offset;
+
+            // Toggle between filled and unfilled
+            fill = !fill;
+        }
+    }
+
+    // Draw objects on top of the map (if needed)
+    draw_objects();
+
+    glPopMatrix();  // Restore the matrix state
+
+    // Swap the buffers to make sure rendering is updated
+    glXSwapBuffers(display, window);
+}
+
+
+
+void reshape(int width, int height) {
+    glViewport(0, 0, width, height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    // Adjust these values to zoom out the view and fit the rotated map
+    float aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+    float zoom_factor = 1.4f; // Increase this value to zoom out further
+
+    // Adjust the ortho parameters to fit the map and account for rotation
+    if (aspect_ratio > 1.0f) {
+        glOrtho(-map_width * zoom_factor * aspect_ratio / 2, map_width * zoom_factor * aspect_ratio / 2,
+                -map_height * zoom_factor / 2, map_height * zoom_factor / 2, -1, 1);
+    } else {
+        glOrtho(-map_width * zoom_factor / 2, map_width * zoom_factor / 2,
+                -map_height * zoom_factor / aspect_ratio / 2, map_height * zoom_factor / aspect_ratio / 2, -1, 1);
+    }
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void init_opengl() {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_DEPTH_TEST);  // Disable depth testing
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+
+
+void draw_objects() {
+    for (const auto& object : objects) {
+        int x = object["x"];
+        int y = object["y"];
+
+        if (object.contains("op") && object["op"] == 23) {
+            glColor4f(0.0f, 0.0f, 1.0f, 0.7f);  // Blue waypoints, 70% opaque
+        } else if (object.contains("type") && object["type"] == "exit") {
+            if (object.contains("id") && object["id"] == 102) {
+                glColor4f(0.0f, 1.0f, 0.0f, 0.7f);  // Green for exit with id 102, 70% opaque
+            } else if (object.contains("id") && object["id"] == 100) {
+                glColor4f(1.0f, 0.0f, 0.0f, 0.7f);  // Red for exit with id 100, 70% opaque
+            } else {
+                glColor4f(1.0f, 1.0f, 0.0f, 0.7f);  // Yellow for other exits, 70% opaque
+            }
+        } else {
+            continue;
+        }
+
+        glBegin(GL_QUADS);
+        glVertex2i(x - 6, y - 6);
+        glVertex2i(x + 6, y - 6);
+        glVertex2i(x + 6, y + 6);
+        glVertex2i(x - 6, y + 6);
+        glEnd();
+    }
+}
+
+

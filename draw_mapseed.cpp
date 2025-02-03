@@ -19,6 +19,8 @@ std::vector<std::vector<int>> map_data_rows;
 std::vector<json> objects;  // To store map objects (NPCs, waypoints, etc.)
 int map_width = 0;
 int map_height = 0;
+int window_width = 2560;
+int window_height = 1440;
 
 // Function prototypes
 json load_map_data(const std::string& file_path);
@@ -34,7 +36,7 @@ void set_window_properties(Display* display, Window window);
 
 // Main function
 int main(int argc, char** argv) {
-    if (argc != 2) {
+    if (argc != 4) {
         std::cerr << "Usage: ./draw_mapseed /path/to/map_data.json" << std::endl;
         exit(1);
     }
@@ -102,7 +104,7 @@ int main(int argc, char** argv) {
 
     // Create a borderless fullscreen window
     Window root = RootWindow(display, visual->screen);
-    Window window = XCreateWindow(display, root, 0, 0, 1920, 1080, 0, visual->depth, InputOutput,
+    Window window = XCreateWindow(display, root, 0, 0, window_width, window_height, 0, visual->depth, InputOutput,
                                 visual->visual, CWColormap | CWBorderPixel | CWEventMask | CWBackPixel, &swa);
 
     // Set the window to be borderless fullscreen
@@ -224,29 +226,16 @@ void renderScene(Display* display, Window window) {
     glClearColor(0, 0, 0, 0);  // Ensure clear color is fully transparent
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Clear the screen with a transparent background
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glPushMatrix();  // Save the current matrix
 
-    // Calculate the map center based on its width and height
-    float center_x = map_width / 2.0f;
-    float center_y = map_height / 2.0f;
+    // Apply the vertical flip
+    glScalef(1.0f, -1.0f, 1.0f);
 
-    // First, translate to the correct position in the normal (non-rotated) coordinate system
-    glTranslatef(-center_x, -center_y, 0);  // Move the map to its correct center position before rotating
-
-    // Apply the vertical flip by scaling the Y-axis by -1
-    glScalef(1.0f, -1.0f, 1.0f);  // This flips the Y-axis
-
-    // Apply an additional translation to move the map upwards
-    float upward_offset = -200.0f;  // Adjust this value to move the map higher
-    glTranslatef(0.0f, upward_offset, 0.0f);  // Shift the map upwards
-
-    // Apply the 45-degree rotation (around the origin)
-    glTranslatef(center_x, center_y, 0);  // Translate to the center of the map
-    glRotatef(45.0f, 0.0f, 0.0f, 1.0f);  // Rotate by 45 degrees around the Z-axis
-    glTranslatef(-center_x, -center_y, 0);  // Translate back to the original map position
+    // Rotate around the center of the map
+    glRotatef(45.0f, 0.0f, 0.0f, 1.0f);
+    int movemapx = map_width / 2;
+    int movemapy = map_height / 2;
+    glTranslatef(-movemapx, -movemapy, 0.0f);
 
     // Now draw the map
     for (int y = 0; y < map_height; ++y) {
@@ -257,7 +246,7 @@ void renderScene(Display* display, Window window) {
         for (int offset : row) {
             if (!fill) {
                 // Opaque white for the map itself
-                glColor4f(1.0f, 1.0f, 1.0f, 0.2f);
+                glColor4f(1.0f, 1.0f, 1.0f, 0.07f);
 
                 // Draw the quad for unfilled areas (the map itself)
                 glBegin(GL_QUADS);
@@ -285,6 +274,8 @@ void renderScene(Display* display, Window window) {
 }
 
 
+
+
 void reshape(int width, int height) {
     glViewport(0, 0, width, height);
 
@@ -293,7 +284,7 @@ void reshape(int width, int height) {
 
     // Adjust these values to zoom out the view and fit the rotated map
     float aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
-    float zoom_factor = 1.4f; // Increase this value to zoom out further
+    float zoom_factor = 1.6f; // Increase this value to zoom out further
 
     // Adjust the ortho parameters to fit the map and account for rotation
     if (aspect_ratio > 1.0f) {
@@ -308,25 +299,46 @@ void reshape(int width, int height) {
     glLoadIdentity();
 }
 
+
+
 void draw_objects() {
+    // Coordinates to track specific objects
+    int op_x = -1, op_y = -1;
+    int id_x = -1, id_y = -1;
+    int fallback_x = -1, fallback_y = -1; // Fallback for yellow exits
+    int red_x = -1, red_y = -1; // Red exit coordinates
+
     for (const auto& object : objects) {
         int x = object["x"];
         int y = object["y"];
 
         if (object.contains("op") && object["op"] == 23) {
             glColor4f(0.0f, 0.0f, 1.0f, 0.7f);  // Blue waypoints, 70% opaque
+            op_x = x;
+            op_y = y;
+        //} else if (object.contains("id") && (object["id"] == 580 || object["id"] == 581)) {
+        } else if (object.contains("id") && (object["id"] == 580)) {
+            glColor4f(1.0f, 0.5f, 0.0f, 0.7f);  // Orange for id 580 or 581, 70% opaque
+            // chest-super
         } else if (object.contains("type") && object["type"] == "exit") {
             if (object.contains("id") && object["id"] == 102) {
                 glColor4f(0.0f, 1.0f, 0.0f, 0.7f);  // Green for exit with id 102, 70% opaque
+                id_x = x;
+                id_y = y;
             } else if (object.contains("id") && object["id"] == 100) {
                 glColor4f(1.0f, 0.0f, 0.0f, 0.7f);  // Red for exit with id 100, 70% opaque
+                red_x = x;
+                red_y = y;
             } else {
                 glColor4f(1.0f, 1.0f, 0.0f, 0.7f);  // Yellow for other exits, 70% opaque
+                fallback_x = x;
+                fallback_y = y;
             }
         } else {
             continue;
         }
 
+        // Draw object as a square
         glBegin(GL_QUADS);
         glVertex2i(x - 6, y - 6);
         glVertex2i(x + 6, y - 6);
@@ -334,7 +346,74 @@ void draw_objects() {
         glVertex2i(x - 6, y + 6);
         glEnd();
     }
+
+    // Draw arrow logic
+    if (op_x != -1 && op_y != -1) {
+        // Use exit with id 102 if available, otherwise fallback to yellow exit
+        int target_x = (id_x != -1) ? id_x : fallback_x;
+        int target_y = (id_y != -1) ? id_y : fallback_y;
+
+        if (target_x != -1 && target_y != -1) {
+            glColor4f(1.0f, 1.0f, 1.0f, 0.7f);  // White for the arrow, 70% opaque
+
+            // Draw line between points
+            glBegin(GL_LINES);
+            glVertex2i(op_x, op_y);
+            glVertex2i(target_x, target_y);
+            glEnd();
+
+            // Calculate arrowhead direction
+            float angle = atan2(target_y - op_y, target_x - op_x);
+            float arrow_length = 10.0f; // Length of arrowhead lines
+
+            // Points for arrowhead
+            float arrow_x1 = target_x - arrow_length * cos(angle + M_PI / 6);
+            float arrow_y1 = target_y - arrow_length * sin(angle + M_PI / 6);
+
+            float arrow_x2 = target_x - arrow_length * cos(angle - M_PI / 6);
+            float arrow_y2 = target_y - arrow_length * sin(angle - M_PI / 6);
+
+            // Draw arrowhead
+            glBegin(GL_LINES);
+            glVertex2i(target_x, target_y);
+            glVertex2i(static_cast<int>(arrow_x1), static_cast<int>(arrow_y1));
+            glVertex2i(target_x, target_y);
+            glVertex2i(static_cast<int>(arrow_x2), static_cast<int>(arrow_y2));
+            glEnd();
+        }
+    } else if (red_x != -1 && red_y != -1 && fallback_x != -1 && fallback_y != -1) {
+        // Draw arrow between red and yellow exits if no op == 23
+        glColor4f(1.0f, 1.0f, 1.0f, 0.7f);  // White for the arrow, 70% opaque
+
+        // Draw line between red and yellow exits
+        glBegin(GL_LINES);
+        glVertex2i(red_x, red_y);
+        glVertex2i(fallback_x, fallback_y);
+        glEnd();
+
+        // Calculate arrowhead direction
+        float angle = atan2(fallback_y - red_y, fallback_x - red_x);
+        float arrow_length = 10.0f; // Length of arrowhead lines
+
+        // Points for arrowhead
+        float arrow_x1 = fallback_x - arrow_length * cos(angle + M_PI / 6);
+        float arrow_y1 = fallback_y - arrow_length * sin(angle + M_PI / 6);
+
+        float arrow_x2 = fallback_x - arrow_length * cos(angle - M_PI / 6);
+        float arrow_y2 = fallback_y - arrow_length * sin(angle - M_PI / 6);
+
+        // Draw arrowhead
+        glBegin(GL_LINES);
+        glVertex2i(fallback_x, fallback_y);
+        glVertex2i(static_cast<int>(arrow_x1), static_cast<int>(arrow_y1));
+        glVertex2i(fallback_x, fallback_y);
+        glVertex2i(static_cast<int>(arrow_x2), static_cast<int>(arrow_y2));
+        glEnd();
+    }
 }
+
+
+
 
 // Window utilities
 void make_window_transparent(Display* display, Window window) {
