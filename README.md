@@ -3,7 +3,7 @@
 
 requires: https://hub.docker.com/r/blacha/diablo2
 
-nlohmann-json
+Debian: sudo apt install nlohmann-json3-dev libglew-dev
 
 
 game must be in windowed mode for the map overlay to work
