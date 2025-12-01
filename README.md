@@ -11,12 +11,12 @@ game must be in windowed mode for the map overlay to work
 only works on X11
 
 
-'''
+````
 bash build_windows.sh
 bash build_drawmapseedcpp.sh
 bash memgoblin.sh
 enjoy
-'''
+````
 
 it doesnt read player x,y..... yet?
 
