@@ -28,6 +28,8 @@ printvars() {
 runinwineprefix() {
   local a="$1"
   WINEDEBUG=-all WINEPREFIX="/home/trite/Games/battlenet" WINEFSYNC=1 /home/trite/.local/share/lutris/runners/wine/wine-ge-8-26-x86_64/bin/wine $a 2>/dev/null
+  # Example for steam "add custom game" proton
+  # WINEDEBUG=-all WINEPREFIX="/home/trite/.steam/steam/steamapps/compatdata/3827662210/pfx" WINEFSYNC=1 /home/trite/.steam/steam/steamapps/common/Proton\ -\ Experimental/files/bin/wine $a 2>/dev/null
 }
 
 mapdifficulty=1   # [0: Normal, 1: Nightmare, 2: Hell]
